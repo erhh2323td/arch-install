@@ -39,13 +39,13 @@
 ## ALSO LOOK AT THE install_packages FUNCTION TO SEE WHAT IS ACTUALLY INSTALLED
 
 # Drive to install to.
-DRIVE='/dev/sda'
+DRIVE='/dev/mmcblk0'
 
 # Hostname of the installed machine.
-HOSTNAME='host100'
+HOSTNAME='archbook'
 
 # Encrypt everything (except /boot).  Leave blank to disable.
-ENCRYPT_DRIVE='TRUE'
+ENCRYPT_DRIVE=''
 
 # Passphrase used to encrypt the drive (leave blank to be prompted).
 DRIVE_PASSPHRASE='a'
@@ -54,20 +54,20 @@ DRIVE_PASSPHRASE='a'
 ROOT_PASSWORD='a'
 
 # Main user to create (by default, added to wheel group, and others).
-USER_NAME='user'
+USER_NAME='jq'
 
 # The main user's password (leave blank to be prompted).
 USER_PASSWORD='a'
 
 # System timezone.
-TIMEZONE='America/New_York'
+TIMEZONE='Europe/Stockholm'
 
 # Have /tmp on a tmpfs or not.  Leave blank to disable.
 # Only leave this blank on systems with very little RAM.
-TMP_ON_TMPFS='TRUE'
+TMP_ON_TMPFS=''
 
-KEYMAP='us'
-# KEYMAP='dvorak'
+#KEYMAP='us'
+KEYMAP='dvorak'
 
 # Choose your video driver
 # For Intel
@@ -80,13 +80,13 @@ VIDEO_DRIVER="i915"
 #VIDEO_DRIVER="vesa"
 
 # Wireless device, leave blank to not use wireless and use DHCP instead.
-WIRELESS_DEVICE="wlan0"
+WIRELESS_DEVICE="wlp2s0" 
 # For tc4200's
 #WIRELESS_DEVICE="eth1"
 
 setup() {
-    local boot_dev="$DRIVE"1
-    local lvm_dev="$DRIVE"2
+    local boot_dev="$DRIVE"p1
+    local lvm_dev="$DRIVE"p2
 
     echo 'Creating partitions'
     partition_drive "$DRIVE"
@@ -138,8 +138,8 @@ setup() {
 }
 
 configure() {
-    local boot_dev="$DRIVE"1
-    local lvm_dev="$DRIVE"2
+    local boot_dev="$DRIVE"p1
+    local lvm_dev="$DRIVE"p2
 
     echo 'Installing additional packages'
     install_packages
