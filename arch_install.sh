@@ -45,7 +45,7 @@ DRIVE='/dev/mmcblk0'
 HOSTNAME='archbook'
 
 # Encrypt everything (except /boot).  Leave blank to disable.
-ENCRYPT_DRIVE='TRUE'
+ENCRYPT_DRIVE=''
 
 # Passphrase used to encrypt the drive (leave blank to be prompted).
 DRIVE_PASSPHRASE='a'
@@ -88,39 +88,39 @@ setup() {
     local boot_dev="$DRIVE"p1
     local lvm_dev="$DRIVE"p2
 
-    #echo 'Creating partitions'
-    #partition_drive "$DRIVE"
+    echo 'Creating partitions'
+    partition_drive "$DRIVE"
 
-    #if [ -n "$ENCRYPT_DRIVE" ]
-    #then
-        #local lvm_part="/dev/mapper/lvm"
+    if [ -n "$ENCRYPT_DRIVE" ]
+    then
+        local lvm_part="/dev/mapper/lvm"
 
-        #if [ -z "$DRIVE_PASSPHRASE" ]
-        #then
-            #echo 'Enter a passphrase to encrypt the disk:'
-            #stty -echo
-            #read DRIVE_PASSPHRASE
-            #stty echo
-        #fi
-#
-        #echo 'Encrypting partition'
-        #encrypt_drive "$lvm_dev" "$DRIVE_PASSPHRASE" lvm
-#
-    #else
-        #local lvm_part="$lvm_dev"
-    #fi
+        if [ -z "$DRIVE_PASSPHRASE" ]
+        then
+            echo 'Enter a passphrase to encrypt the disk:'
+            stty -echo
+            read DRIVE_PASSPHRASE
+            stty echo
+        fi
 
-    #echo 'Setting up LVM'
-    #setup_lvm "$lvm_part" vg00
+        echo 'Encrypting partition'
+        encrypt_drive "$lvm_dev" "$DRIVE_PASSPHRASE" lvm
 
-    #echo 'Formatting filesystems'
-    #format_filesystems "$boot_dev"
+    else
+        local lvm_part="$lvm_dev"
+    fi
 
-    #echo 'Mounting filesystems'
-    #mount_filesystems "$boot_dev"
+    echo 'Setting up LVM'
+    setup_lvm "$lvm_part" vg00
 
-    #echo 'Installing base system'
-    #install_base
+    echo 'Formatting filesystems'
+    format_filesystems "$boot_dev"
+
+    echo 'Mounting filesystems'
+    mount_filesystems "$boot_dev"
+
+    echo 'Installing base system'
+    install_base
 
     echo 'Chrooting into installed system to continue setup...'
     cp $0 /mnt/setup.sh
