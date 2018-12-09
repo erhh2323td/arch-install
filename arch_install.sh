@@ -88,39 +88,39 @@ setup() {
     local boot_dev="$DRIVE"p1
     local lvm_dev="$DRIVE"p2
 
-    echo 'Creating partitions'
-    partition_drive "$DRIVE"
+    #echo 'Creating partitions'
+    #partition_drive "$DRIVE"
 
-    if [ -n "$ENCRYPT_DRIVE" ]
-    then
-        local lvm_part="/dev/mapper/lvm"
+    #if [ -n "$ENCRYPT_DRIVE" ]
+    #then
+        #local lvm_part="/dev/mapper/lvm"
 
-        if [ -z "$DRIVE_PASSPHRASE" ]
-        then
-            echo 'Enter a passphrase to encrypt the disk:'
-            stty -echo
-            read DRIVE_PASSPHRASE
-            stty echo
-        fi
+        #if [ -z "$DRIVE_PASSPHRASE" ]
+        #then
+            #echo 'Enter a passphrase to encrypt the disk:'
+            #stty -echo
+            #read DRIVE_PASSPHRASE
+            #stty echo
+        #fi
+#
+        #echo 'Encrypting partition'
+        #encrypt_drive "$lvm_dev" "$DRIVE_PASSPHRASE" lvm
+#
+    #else
+        #local lvm_part="$lvm_dev"
+    #fi
 
-        echo 'Encrypting partition'
-        encrypt_drive "$lvm_dev" "$DRIVE_PASSPHRASE" lvm
+    #echo 'Setting up LVM'
+    #setup_lvm "$lvm_part" vg00
 
-    else
-        local lvm_part="$lvm_dev"
-    fi
+    #echo 'Formatting filesystems'
+    #format_filesystems "$boot_dev"
 
-    echo 'Setting up LVM'
-    setup_lvm "$lvm_part" vg00
+    #echo 'Mounting filesystems'
+    #mount_filesystems "$boot_dev"
 
-    echo 'Formatting filesystems'
-    format_filesystems "$boot_dev"
-
-    echo 'Mounting filesystems'
-    mount_filesystems "$boot_dev"
-
-    echo 'Installing base system'
-    install_base
+    #echo 'Installing base system'
+    #install_base
 
     echo 'Chrooting into installed system to continue setup...'
     cp $0 /mnt/setup.sh
@@ -144,10 +144,10 @@ configure() {
     echo 'Installing additional packages'
     install_packages
 
-    echo 'Installing yay'
-    install_yay
+    #echo 'Installing yay'
+    #install_yay
 
-    echo 'Installing AUR packages'
+    #echo 'Installing AUR packages'
     #install_aur_packages
 
     echo 'Clearing package tarballs'
@@ -309,7 +309,7 @@ install_packages() {
     # Netcfg
     if [ -n "$WIRELESS_DEVICE" ]
     then
-        packages+=' ifplugd dialog wireless_tools wpa_actiond wpa_supplicant'
+        packages+=' netctl ifplugd dialog wireless_tools wpa_actiond wpa_supplicant'
     fi
 
     # Misc programs
@@ -344,7 +344,7 @@ install_packages() {
         packages+=' xf86-video-vesa'
     fi
 
-    pacman -Sy --noconfirm $packages
+    pacman -Sy --noconfirm --needed $packages
 }
 
 install_yay() {
@@ -352,7 +352,7 @@ install_yay() {
     cd /foo
     curl https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz | tar xzf -
     cd yay
-    makepkg -si --noconfirm --asroot
+    makepkg -si --noconfirm --asroot #TODO: --asroot deprecated, figure out a solution ( can't makepkg as root )
 
     cd /
     rm -rf /foo
@@ -534,11 +534,11 @@ EOF
 set_daemons() {
     local tmp_on_tmpfs="$1"; shift
 
-    systemctl enable cronie.service cpupower.service ntpd.service slim.service
+    systemctl enable cpupower.service ntpd.service slim.service
 
     if [ -n "$WIRELESS_DEVICE" ]
     then
-        systemctl enable net-auto-wired.service net-auto-wireless.service
+        systemctl enable netctl.service netctl-sleep.service netctl-wait-online.service
     else
         systemctl enable dhcpcd@eth0.service
     fi
@@ -876,7 +876,7 @@ create_user() {
     local name="$1"; shift
     local password="$1"; shift
 
-    useradd -m -s /bin/zsh -G adm,systemd-journal,wheel,rfkill,games,network,video,audio,optical,floppy,storage,scanner,power,adbusers,wireshark "$name"
+    useradd -m -s /bin/zsh -G adm,systemd-journal,wheel,rfkill,games,network,video,audio,optical,floppy,storage,scanner,power "$name"
     echo -en "$password\n$password" | passwd "$name"
 }
 
