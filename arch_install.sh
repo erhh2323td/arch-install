@@ -45,7 +45,7 @@ DRIVE='/dev/mmcblk0'
 HOSTNAME='archbook'
 
 # Encrypt everything (except /boot).  Leave blank to disable.
-ENCRYPT_DRIVE=''
+ENCRYPT_DRIVE='TRUE'
 
 # Passphrase used to encrypt the drive (leave blank to be prompted).
 DRIVE_PASSPHRASE='a'
@@ -144,11 +144,11 @@ configure() {
     echo 'Installing additional packages'
     install_packages
 
-    echo 'Installing packer'
-    install_packer
+    echo 'Installing yay'
+    install_yay
 
     echo 'Installing AUR packages'
-    install_aur_packages
+    #install_aur_packages
 
     echo 'Clearing package tarballs'
     clean_packages
@@ -160,7 +160,7 @@ configure() {
     set_hostname "$HOSTNAME"
 
     echo 'Setting timezone'
-    set_timezone "$TIMEZONE"
+    #set_timezone "$TIMEZONE"
 
     echo 'Setting locale'
     set_locale
@@ -192,11 +192,11 @@ configure() {
     echo 'Configuring slim'
     set_slim
 
-    if [ -n "$WIRELESS_DEVICE" ]
-    then
-        echo 'Configuring netcfg'
-        set_netcfg
-    fi
+    #if [ -n "$WIRELESS_DEVICE" ]
+    #then
+        #echo 'Configuring netcfg'
+        #set_netcfg
+    #fi
 
     if [ -z "$ROOT_PASSWORD" ]
     then
@@ -309,17 +309,11 @@ install_packages() {
     # Netcfg
     if [ -n "$WIRELESS_DEVICE" ]
     then
-        packages+=' netcfg ifplugd dialog wireless_tools wpa_actiond wpa_supplicant'
+        packages+=' ifplugd dialog wireless_tools wpa_actiond wpa_supplicant'
     fi
 
-    # Java stuff
-    packages+=' icedtea-web-java7 jdk7-openjdk jre7-openjdk'
-
-    # Libreoffice
-    packages+=' libreoffice-calc libreoffice-en-US libreoffice-gnome libreoffice-impress libreoffice-writer hunspell-en hyphen-en mythes-en'
-
     # Misc programs
-    packages+=' mplayer pidgin vlc xscreensaver gparted dosfstools ntfsprogs'
+    packages+=' xscreensaver gparted dosfstools ntfsprogs'
 
     # Xserver
     packages+=' xorg-apps xorg-server xorg-xinit xterm'
@@ -335,9 +329,6 @@ install_packages() {
 
     # For laptops
     packages+=' xf86-input-synaptics'
-
-    # Extra packages for tc4200 tablet
-    #packages+=' ipw2200-fw xf86-input-wacom'
 
     if [ "$VIDEO_DRIVER" = "i915" ]
     then
@@ -356,11 +347,11 @@ install_packages() {
     pacman -Sy --noconfirm $packages
 }
 
-install_packer() {
+install_yay() {
     mkdir /foo
     cd /foo
-    curl https://aur.archlinux.org/packages/pa/packer/packer.tar.gz | tar xzf -
-    cd packer
+    curl https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz | tar xzf -
+    cd yay
     makepkg -si --noconfirm --asroot
 
     cd /
@@ -370,9 +361,9 @@ install_packer() {
 install_aur_packages() {
     mkdir /foo
     export TMPDIR=/foo
-    packer -S --noconfirm android-udev
-    packer -S --noconfirm chromium-pepper-flash-stable
-    packer -S --noconfirm chromium-libpdf-stable
+    yay -S --noconfirm android-udev
+    yay -S --noconfirm chromium-pepper-flash-stable
+    yay -S --noconfirm chromium-libpdf-stable
     unset TMPDIR
     rm -rf /foo
 }
@@ -673,13 +664,13 @@ set_sudoers() {
 ##
 ## Groups of users.  These may consist of user names, uids, Unix groups,
 ## or netgroups.
-# User_Alias	ADMINS = millert, dowdy, mikef
+User_Alias	ADMINS = jq,joaqim
 
 ##
 ## Cmnd alias specification
 ##
 ## Groups of commands.  Often used to group related commands together.
-# Cmnd_Alias	PROCESSES = /usr/bin/nice, /bin/kill, /usr/bin/renice, \
+Cmnd_Alias	PROCESSES = /usr/bin/nice, /bin/kill, /usr/bin/renice, \
 # 			    /usr/bin/pkill, /usr/bin/top
 
 ##
@@ -703,7 +694,7 @@ set_sudoers() {
 # Defaults env_keep += "QTDIR KDEDIR"
 ##
 ## Allow sudo-run commands to inherit the callers' ConsoleKit session
-# Defaults env_keep += "XDG_SESSION_COOKIE"
+Defaults env_keep += "XDG_SESSION_COOKIE"
 ##
 ## Uncomment to enable special input methods.  Care should be taken as
 ## this may allow users to subvert the command being run via sudo.
