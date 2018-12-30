@@ -45,7 +45,7 @@ DRIVE='/dev/mmcblk0'
 HOSTNAME='archbook'
 
 # Encrypt everything (except /boot).  Leave blank to disable.
-ENCRYPT_DRIVE=''
+ENCRYPT_DRIVE='TRUE'
 
 # Passphrase used to encrypt the drive (leave blank to be prompted).
 DRIVE_PASSPHRASE='a'
@@ -301,10 +301,10 @@ install_packages() {
     local packages=''
 
     # General utilities/libraries
-    packages+=' alsa-utils aspell-en chromium cpupower gvim mlocate net-tools ntp openssh p7zip pkgfile powertop python python2 rfkill rsync sudo unrar unzip wget zip systemd-sysvcompat zsh grml-zsh-config'
+    packages+=' alsa-utils aspell-en chromium cpupower mlocate net-tools ntp openssh p7zip pkgfile powertop python python2 rfkill rsync sudo unrar unzip wget zip systemd-sysvcompat zsh grml-zsh-config xbanish'
 
     # Development packages
-    packages+=' apache-ant cmake gdb git maven mercurial subversion tcpdump valgrind wireshark-gtk'
+    packages+='cmake gdb git'
 
     # Netcfg
     if [ -n "$WIRELESS_DEVICE" ]
@@ -313,13 +313,13 @@ install_packages() {
     fi
 
     # Java stuff
-    packages+=' icedtea-web-java7 jdk7-openjdk jre7-openjdk'
+    #packages+=' icedtea-web-java7 jdk7-openjdk jre7-openjdk'
 
     # Libreoffice
-    packages+=' libreoffice-calc libreoffice-en-US libreoffice-gnome libreoffice-impress libreoffice-writer hunspell-en hyphen-en mythes-en'
+    #packages+=' libreoffice-calc libreoffice-en-US libreoffice-gnome libreoffice-impress libreoffice-writer hunspell-en hyphen-en mythes-en'
 
     # Misc programs
-    packages+=' mplayer pidgin vlc xscreensaver gparted dosfstools ntfsprogs'
+    packages+=' mpv mplayer xscreensaver dosfstools ntfsprogs'
 
     # Xserver
     packages+=' xorg-apps xorg-server xorg-xinit xterm'
@@ -594,7 +594,7 @@ set_syslinux() {
 
 DEFAULT arch
 PROMPT 0        # Set to 1 if you always want to display the boot: prompt 
-TIMEOUT 50
+TIMEOUT 1
 # You can create syslinux keymaps with the keytab-lilo tool
 #KBDMAP de.ktl
 
@@ -740,7 +740,7 @@ root ALL=(ALL) ALL
 # ALL ALL=(ALL) ALL  # WARNING: only use this together with 'Defaults targetpw'
 
 %rfkill ALL=(ALL) NOPASSWD: /usr/sbin/rfkill
-%network ALL=(ALL) NOPASSWD: /usr/bin/netcfg, /usr/bin/wifi-menu
+%network ALL=(ALL) NOPASSWD: /usr/bin/netcfg, /usr/bin/wifi-menu, /usr/bin/wpa_supplicant, /usr/bin/dhcpcd
 
 ## Read drop-in files from /etc/sudoers.d
 ## (the '#' here does not indicate a comment)
@@ -771,11 +771,11 @@ xauth_path         /usr/bin/xauth
 authfile           /var/run/slim.auth
 
 # Activate numlock when slim starts. Valid values: on|off
-# numlock             on
+numlock             on
 
 # Hide the mouse cursor (note: does not work with some WMs).
 # Valid values: true|false
-# hidecursor          false
+hidecursor          true
 
 # This command is executed after a succesful login.
 # you can place the %session and %theme variables
@@ -822,11 +822,11 @@ reboot_msg         The system is rebooting...
 
 # default user, leave blank or remove this line
 # for avoid pre-loading the username.
-#default_user        simone
+default_user        $USER_NAME
 
 # Focus the password field on start when default_user is set
 # Set to "yes" to enable this feature
-#focus_password      no
+focus_password      yes
 
 # Automatically login the default user (without entering
 # the password. Set to "yes" to enable this feature
