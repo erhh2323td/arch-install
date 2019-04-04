@@ -1,16 +1,16 @@
 #!/bin/bash
 # Copyright (c) 2012 Tom Wambold
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -39,7 +39,7 @@
 ## ALSO LOOK AT THE install_packages FUNCTION TO SEE WHAT IS ACTUALLY INSTALLED
 
 # Drive to install to.
-DRIVE='/dev/sde'
+#DRIVE='/dev/sde'
 
 # Hostname of the installed machine.
 HOSTNAME='archlinux'
@@ -80,13 +80,13 @@ VIDEO_DRIVER="radeon"
 #VIDEO_DRIVER="vesa"
 
 # Wireless device, leave blank to not use wireless and use DHCP instead.
-WIRELESS_DEVICE="wlp3s0" 
+WIRELESS_DEVICE="wlp3s0"
 # For tc4200's
 #WIRELESS_DEVICE="eth1"
 
 setup() {
-    local boot_dev="$DRIVE"p1
-    local lvm_dev="$DRIVE"p2
+    local boot_dev="$DRIVE"1
+    local lvm_dev="$DRIVE"2
 
     echo 'Creating partitions'
     partition_drive "$DRIVE"
@@ -114,10 +114,10 @@ setup() {
     setup_lvm "$lvm_part" vg00
 
     echo 'Formatting filesystems'
-    format_filesystems "$boot_dev"
+    format_filesystems "$efi_dev" "$boot_dev" "$lvm_dev"
 
     echo 'Mounting filesystems'
-    mount_filesystems "$boot_dev"
+    mount_filesystems "$efi_dev" "$boot_dev" "$lvm_dev"
 
     echo 'Installing base system'
     install_base
@@ -138,8 +138,9 @@ setup() {
 }
 
 configure() {
-    local boot_dev="$DRIVE"p1
-    local lvm_dev="$DRIVE"p2
+    local efi_dev="$DRIVE"1
+    local boot_dev="$DRIVE"2
+    local lvm_dev="$DRIVE"3
 
     echo 'Installing additional packages'
     install_packages
@@ -147,11 +148,11 @@ configure() {
     #echo 'Installing packer'
     #install_packer
 
-    echo 'Installing yay'
-    install_yay
+    #echo 'Installing yay'
+    #install_yay
 
-    echo 'Installing AUR packages'
-    install_aur_packages
+    #echo 'Installing AUR packages'
+    #install_aur_packages
 
     echo 'Clearing package tarballs'
     clean_packages
@@ -174,8 +175,8 @@ configure() {
     echo 'Setting hosts file'
     set_hosts "$HOSTNAME"
 
-    echo 'Setting fstab'
-    set_fstab "$TMP_ON_TMPFS" "$boot_dev"
+    #echo 'Setting fstab'
+    #set_fstab "$TMP_ON_TMPFS" "$boot_dev"
 
     echo 'Setting initial modules to load'
     set_modules_load
@@ -186,19 +187,20 @@ configure() {
     echo 'Setting initial daemons'
     set_daemons "$TMP_ON_TMPFS"
 
-    echo 'Configuring bootloader'
-    set_syslinux "$lvm_dev"
+    #echo 'Configuring bootloader'
+    #set_syslinux "$lvm_dev"
+    set_grub
 
     echo 'Configuring sudo'
     set_sudoers
 
-    echo 'Configuring slim'
-    set_slim
+    #echo 'Configuring slim'
+    #set_slim
 
     if [ -n "$WIRELESS_DEVICE" ]
     then
         echo 'Configuring netcfg'
-        set_netcfg
+        #set_netcfg
     fi
 
     if [ -z "$ROOT_PASSWORD" ]
@@ -231,12 +233,22 @@ partition_drive() {
     local dev="$1"; shift
 
     # 100 MB /boot partition, everything else under LVM
-    parted -s "$dev" \
-        mklabel msdos \
-        mkpart primary ext2 1 100M \
-        mkpart primary ext2 100M 100% \
-        set 1 boot on \
-        set 2 LVM on
+    #parted -s "$dev" \
+        #mklabel msdos \
+        #mkpart primary ext2 1 100M \
+        #mkpart primary ext2 100M 100% \
+        #set 1 boot on \
+        #set 2 LVM on
+     parted -s "$dev" \
+	mklabel gpt \
+	mkpart ESP fat32 1MiB 512MiB \
+	set 1 boot on \
+	name 1 efi \
+	mkpart primary 513MiB 800MiB \
+	name 2 boot \
+	mkpart primary 800MiB 100% \
+	name 3 lvm-partition \
+	set 3 lvm on \
 }
 
 encrypt_drive() {
@@ -252,8 +264,8 @@ setup_lvm() {
     local partition="$1"; shift
     local volgroup="$1"; shift
 
-    pvcreate "$partition"
-    vgcreate "$volgroup" "$partition"
+    pvcreate -ff "$partition"
+    vgcreate -ff "$volgroup" "$partition"
 
     # Create a 1GB swap partition
     lvcreate -C y -L1G "$volgroup" -n swap
@@ -266,19 +278,29 @@ setup_lvm() {
 }
 
 format_filesystems() {
-    local boot_dev="$1"; shift
+    local efi_dev="$1"
+    local boot_dev="$2"
+    local lvm_dev="$3"
 
-    mkfs.ext2 -L boot "$boot_dev"
-    mkfs.ext4 -L root /dev/vg00/root
+    mkfs.fat -F32 "$efi_dev"
+    #mkfs.ext2 -L boot "$boot_dev"
+    mkfs.ext2 "$boot_dev"
+    mkfs.btrfs -L root /dev/vg00/root
     mkswap /dev/vg00/swap
+
+    swapon /dev/vg00/swap
 }
 
 mount_filesystems() {
-    local boot_dev="$1"; shift
+    local efi_dev="$1"
+    local boot_dev="$2"
+    local lvm_dev="$3"
 
     mount /dev/vg00/root /mnt
-    mkdir /mnt/boot
+    mkdir /mnt/{home,boot}
     mount "$boot_dev" /mnt/boot
+    mkdir /mnt/boot/efi
+    mount "$efi_dev" /mnt/boot/efi
     swapon /dev/vg00/swap
 }
 
@@ -286,7 +308,7 @@ install_base() {
     echo 'Server = http://mirrors.kernel.org/archlinux/$repo/os/$arch' >> /etc/pacman.d/mirrorlist
 
     pacstrap /mnt base base-devel
-    pacstrap /mnt syslinux
+    pacstrap /mnt grub efibootmgr vim btrfs-progs
 }
 
 unmount_filesystems() {
@@ -364,7 +386,7 @@ install_packer() {
     cd /foo
     curl https://aur.archlinux.org/packages/pa/packer/packer.tar.gz | tar xzf -
     cd packer
-    makepkg -si --noconfirm --asroot
+    makepkg -si --noconfirm
 
     cd /
     rm -rf /foo
@@ -375,16 +397,19 @@ install_yay() {
 	cd /foo
 	git clone https://aur.archlinux.org/yay.git
 	cd yay
-	makepkg -si --noconfirm --asroot
+	makepkg -si --noconfirm
 
 	cd /
 	rm -rf /foo
 }
 
 install_aur_packages() {
+    if [ -f /foo ]; then
+	rm -rf /foo
+    fi
     mkdir /foo
     export TMPDIR=/foo
-    yay -S --noconfirm android-udev
+    #yay -S --noconfirm android-udev
     yay -S --noconfirm chromium-pepper-flash-stable
     yay -S --noconfirm chromium-libpdf-stable
     yay -S --noconfirm fisher
@@ -409,13 +434,16 @@ set_hostname() {
 set_timezone() {
     local timezone="$1"; shift
 
-    ln -sT "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
+    if [ ! -f /etc/localtime ]; then
+    	ln -sT "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
+    fi
 }
 
 set_locale() {
     echo 'LANG="en_US.UTF-8"' >> /etc/locale.conf
     echo 'LC_COLLATE="C"' >> /etc/locale.conf
-    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+    echo "sv_SE.UTF-8 UTF-8" >> /etc/locale.gen
     locale-gen
 }
 
@@ -452,7 +480,8 @@ EOF
 }
 
 set_modules_load() {
-    echo 'microcode' > /etc/modules-load.d/intel-ucode.conf
+    #echo 'microcode' > /etc/modules-load.d/intel-ucode.conf
+    #echo 'microcode' > /etc/modules-load.d/intel-ucode.conf
 }
 
 set_initcpio() {
@@ -573,6 +602,12 @@ set_daemons() {
     fi
 }
 
+set_grub() {
+     grub-install --target=x86_64-efi --efi-directory=/boot/efi
+     grub-mkconfig -o /boot/grub/grub.cfg
+     grub-mkconfig -o /boot/efi/EFI/arch/grub.cfg
+}
+
 set_syslinux() {
     local lvm_dev="$1"; shift
 
@@ -608,13 +643,13 @@ set_syslinux() {
 # The wiki provides further configuration examples
 
 DEFAULT arch
-PROMPT 0        # Set to 1 if you always want to display the boot: prompt 
+PROMPT 0        # Set to 1 if you always want to display the boot: prompt
 TIMEOUT 1
 # You can create syslinux keymaps with the keytab-lilo tool
 #KBDMAP de.ktl
 
 # Menu Configuration
-# Either menu.c32 or vesamenu32.c32 must be copied to /boot/syslinux 
+# Either menu.c32 or vesamenu32.c32 must be copied to /boot/syslinux
 UI menu.c32
 #UI vesamenu.c32
 
@@ -707,7 +742,7 @@ set_sudoers() {
 # Defaults env_keep += "LANG LANGUAGE LINGUAS LC_* _XKB_CHARSET"
 ##
 ## Run X applications through sudo; HOME is used to find the
-## .Xauthority file.  Note that other programs use HOME to find   
+## .Xauthority file.  Note that other programs use HOME to find
 ## configuration files and this may lead to privilege escalation!
 # Defaults env_keep += "HOME"
 ##
@@ -780,7 +815,7 @@ console_cmd         /usr/bin/xterm -C -fg white -bg black +sb -T "Console login"
 suspend_cmd         /usr/bin/systemctl hybrid-sleep
 
 # Full path to the xauth binary
-xauth_path         /usr/bin/xauth 
+xauth_path         /usr/bin/xauth
 
 # Xauth file for server
 authfile           /var/run/slim.auth
@@ -829,7 +864,7 @@ sessions            foo
 welcome_msg         %host
 
 # Session message. Prepended to the session name when pressing F1
-# session_msg         Session: 
+# session_msg         Session:
 
 # shutdown / reboot messages
 shutdown_msg       The system is shutting down...
@@ -847,7 +882,7 @@ focus_password      yes
 # the password. Set to "yes" to enable this feature
 #auto_login          no
 
-# current theme, use comma separated list to specify a set to 
+# current theme, use comma separated list to specify a set to
 # randomly choose from
 #current_theme       default
 current_theme       archlinux-simplyblack
