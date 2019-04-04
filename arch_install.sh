@@ -39,13 +39,13 @@
 ## ALSO LOOK AT THE install_packages FUNCTION TO SEE WHAT IS ACTUALLY INSTALLED
 
 # Drive to install to.
-DRIVE='/dev/mmcblk0'
+DRIVE='/dev/sde'
 
 # Hostname of the installed machine.
-HOSTNAME='archbook'
+HOSTNAME='archlinux'
 
 # Encrypt everything (except /boot).  Leave blank to disable.
-ENCRYPT_DRIVE='TRUE'
+ENCRYPT_DRIVE=''
 
 # Passphrase used to encrypt the drive (leave blank to be prompted).
 DRIVE_PASSPHRASE='a'
@@ -71,22 +71,22 @@ KEYMAP='dvorak'
 
 # Choose your video driver
 # For Intel
-VIDEO_DRIVER="i915"
+#VIDEO_DRIVER="i915"
 # For nVidia
 #VIDEO_DRIVER="nouveau"
 # For ATI
-#VIDEO_DRIVER="radeon"
+VIDEO_DRIVER="radeon"
 # For generic stuff
 #VIDEO_DRIVER="vesa"
 
 # Wireless device, leave blank to not use wireless and use DHCP instead.
-WIRELESS_DEVICE="wlp2s0" 
+WIRELESS_DEVICE="wlp3s0" 
 # For tc4200's
 #WIRELESS_DEVICE="eth1"
 
 setup() {
-    local boot_dev="$DRIVE"p1
-    local lvm_dev="$DRIVE"p2
+    local boot_dev="$DRIVE"1
+    local lvm_dev="$DRIVE"2
 
     echo 'Creating partitions'
     partition_drive "$DRIVE"
@@ -138,14 +138,17 @@ setup() {
 }
 
 configure() {
-    local boot_dev="$DRIVE"p1
-    local lvm_dev="$DRIVE"p2
+    local boot_dev="$DRIVE"1
+    local lvm_dev="$DRIVE"2
 
     echo 'Installing additional packages'
     install_packages
 
-    echo 'Installing packer'
-    install_packer
+    #echo 'Installing packer'
+    #install_packer
+
+    echo 'Installing yay'
+    install_yay
 
     echo 'Installing AUR packages'
     install_aur_packages
@@ -249,8 +252,8 @@ setup_lvm() {
     local partition="$1"; shift
     local volgroup="$1"; shift
 
-    pvcreate "$partition"
-    vgcreate "$volgroup" "$partition"
+    pvcreate -ff "$partition"
+    vgcreate -ff "$volgroup" "$partition"
 
     # Create a 1GB swap partition
     lvcreate -C y -L1G "$volgroup" -n swap
@@ -301,7 +304,7 @@ install_packages() {
     local packages=''
 
     # General utilities/libraries
-    packages+=' alsa-utils aspell-en chromium cpupower mlocate net-tools ntp openssh p7zip pkgfile powertop python python2 rfkill rsync sudo unrar unzip wget zip systemd-sysvcompat zsh grml-zsh-config xbanish'
+    packages+=' alsa-utils aspell-en chromium cpupower mlocate net-tools ntp openssh p7zip pkgfile powertop python python2 rfkill rsync sudo unrar unzip wget zip systemd-sysvcompat fish  xbanish'
 
     # Development packages
     packages+='cmake gdb git'
@@ -309,7 +312,7 @@ install_packages() {
     # Netcfg
     if [ -n "$WIRELESS_DEVICE" ]
     then
-        packages+=' netcfg ifplugd dialog wireless_tools wpa_actiond wpa_supplicant'
+        packages+=' netcfg ifplugd dialog wireless_tools wpa_actiond wpa_supplicant crda'
     fi
 
     # Java stuff
@@ -319,13 +322,13 @@ install_packages() {
     #packages+=' libreoffice-calc libreoffice-en-US libreoffice-gnome libreoffice-impress libreoffice-writer hunspell-en hyphen-en mythes-en'
 
     # Misc programs
-    packages+=' mpv mplayer xscreensaver dosfstools ntfsprogs'
+    packages+=' mpv xscreensaver dosfstools ntfsprogs'
 
     # Xserver
     packages+=' xorg-apps xorg-server xorg-xinit xterm'
 
     # Slim login manager
-    packages+=' slim archlinux-themes-slim'
+    #packages+=' slim archlinux-themes-slim'
 
     # Fonts
     packages+=' ttf-dejavu ttf-liberation'
@@ -334,7 +337,7 @@ install_packages() {
     packages+=' intel-ucode'
 
     # For laptops
-    packages+=' xf86-input-synaptics'
+    #packages+=' xf86-input-synaptics'
 
     # Extra packages for tc4200 tablet
     #packages+=' ipw2200-fw xf86-input-wacom'
@@ -367,12 +370,24 @@ install_packer() {
     rm -rf /foo
 }
 
+install_yay() {
+	mkdir /foo
+	cd /foo
+	git clone https://aur.archlinux.org/yay.git
+	cd yay
+	makepkg -si --noconfirm --asroot
+
+	cd /
+	rm -rf /foo
+}
+
 install_aur_packages() {
     mkdir /foo
     export TMPDIR=/foo
-    packer -S --noconfirm android-udev
-    packer -S --noconfirm chromium-pepper-flash-stable
-    packer -S --noconfirm chromium-libpdf-stable
+    yay -S --noconfirm android-udev
+    yay -S --noconfirm chromium-pepper-flash-stable
+    yay -S --noconfirm chromium-libpdf-stable
+    yay -S --noconfirm fisher
     unset TMPDIR
     rm -rf /foo
 }
@@ -885,7 +900,7 @@ create_user() {
     local name="$1"; shift
     local password="$1"; shift
 
-    useradd -m -s /bin/zsh -G adm,systemd-journal,wheel,rfkill,games,network,video,audio,optical,floppy,storage,scanner,power,adbusers,wireshark "$name"
+    useradd -m -s /bin/fish -G adm,systemd-journal,wheel,rfkill,games,network,video,audio,optical,floppy,storage,scanner,power,adbusers,wireshark "$name"
     echo -en "$password\n$password" | passwd "$name"
 }
 
